@@ -9,6 +9,7 @@
 
 #I referenced a lot of codes and hints from Advanced Lane Finding" Lecture of CarND!
 
+
 import numpy as np
 import cv2
 import glob
@@ -21,6 +22,7 @@ import math
 import os 
 #import sys
 
+
 #It took some time to do Sliding window search.It will be better to avoid it as much as possible.
 #we can't skip it from the beginning. For new video, it is done about the first frame.
 #After than, we can skip it. However, It must be done when the lane line is not clear.
@@ -31,6 +33,12 @@ left_fit = None
 right_fit = None
 left_fitx = None
 right_fitx = None
+
+#all is based on pixel. when putting text on the upper left corner, these are translated in meters.
+left_curvature = 0
+right_curvature =0
+
+middle_point_off = 0.0
 
 #It keeps the image that was drawn on a previous frame.
 #When the lane lines doesn't seem to be good, this image(previous one) is used.
@@ -44,6 +52,12 @@ PICKLE_READY = True
 
 #just for debug & writeup report.
 debug=True
+
+
+#it was assumed that the lane is about 30 meters long and 3.7 meters wide
+
+ym_per_pix = 30/720
+xm_per_pix = 3.7/700
 
 
 def region_of_interest(img, vertices):
@@ -214,6 +228,7 @@ def get_vertices(shape):
     return vertices
 
 
+
 #calculate the radius of curvature. return true if it's good 
 def check_curvature(a,b,c,X):
         yp = a*2 *X + b
@@ -226,9 +241,9 @@ def check_curvature(a,b,c,X):
         #becuase ane lines can't be curved accidently in general.
         #well... actually, I got this range from trial and error.
         if radius_of_curvature  > 2000 and  radius_of_curvature  < 30000:
-           return True
+           return (True , radius_of_curvature)
         else:
-           return False
+           return (False, radius_of_curvature)
 
 
 def draw_lanelines(image):
@@ -241,8 +256,13 @@ def draw_lanelines(image):
     global left_fitx
     global right_fitx
 
+    global left_curvature 
+    global right_curvature 
+
     global mtx
     global dist
+
+    global middle_point_off
 
     #if finding lane line is not possible with this frame, use previous one.
     use_old_one = False
@@ -258,12 +278,49 @@ def draw_lanelines(image):
     #    cv2.line(image, tuple(dd[i]), tuple(dd[i+1]), color=(0,0,255), thickness=5)
     #
 
-    combined  = process_combined_threshold(image)
+    kernel_size = 3 #kernel size
+    # 1) Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    #just for writeup report
-    if debug == True:
-        mpimg.imsave('writeup_combined_binary.jpg',combined)
+    # 2) Take the derivative in x & y 
+    xSobel = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=kernel_size)
+    ySobel = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=kernel_size)
 
+    # 3) Take the absolute value of the derivative or gradient
+    xAbs = np.absolute(xSobel)
+    yAbs = np.absolute(ySobel)
+
+    # 4) Scale to 8-bit (0 - 255) then convert to type = np.uint8
+    xScale = np.uint8(255*xAbs/np.max(xAbs))
+    yScale = np.uint8(255*yAbs/np.max(yAbs))
+
+    # 5) Create a mask of 1's 
+    thresh=(20, 100)
+
+    xGrad = np.zeros_like(xScale)
+    xGrad[(xScale >= thresh[0]) & (xScale <= thresh[1])] = 1
+
+    yGrad = np.zeros_like(yScale)
+    yGrad[(yScale >= thresh[0]) & (yScale <= thresh[1])] = 1
+    #############################################################
+    # 6) Calculate the magnitude(binary)
+    thresh=(30,100)
+    mag = np.sqrt( xGrad**2 + yGrad **2)
+    mag = np.absolute(mag)
+    mag = np.uint8(255*mag/np.max(mag))
+
+    mag_bin = np.zeros_like(mag)
+    mag_bin[(mag >= thresh[0]) & (mag <= thresh[1] )] = 1
+    #############################################################
+    # 7) calculate the direction of the gradient
+    thresh=(0.7,1.3) 
+    dir_ = np.arctan2(ySobel,xSobel) 
+    dir_bin = np.zeros_like(dir_)
+    dir_bin [(dir_ >=  thresh[0]) & (dir_ <=  thresh[1] )] = 1
+
+    ##############################################################
+    # 8) channel in HLS
+    ##############################################################
     hls = cv2.cvtColor(out, cv2.COLOR_RGB2HLS)
 
     #H = hls[:,:,0]
@@ -272,13 +329,26 @@ def draw_lanelines(image):
     low = 150
     high = 255
 
-    zero = np.zeros_like(S, dtype=np.uint8)
 
-    one = np.zeros_like(S, dtype=np.uint8)
+    ##############################################################
+    # 9) try to get the best result by combining 4 elements of upper code.
+    ##############################################################
+    combined = np.zeros_like(dir_bin,dtype=np.uint8)
 
+    #this fomula gave me a good result!
+    combined[((S > low) & (S <= high)) | 
+             ((xGrad == 1) & (yGrad == 1) & (mag_bin == 1) & (dir_bin == 1))] = 1
 
-    #one[(S > low) & (S <= high) & (combined == 1)] = 255
-    one[(S > low) & (S <= high)] = 255
+    #combined[((S > low) & (S <= high)) &  (combined == 1)] = 255
+    #combined[(S > low) & (S <= high)] = 255
+
+    #just for writeup report
+    if debug == True:
+        mpimg.imsave('writeup_combined_binary.jpg',combined)
+
+    ###############################################################
+    # 10) perspective transform
+    ##############################################################
 
     #I got these values directly by an image viewer.
     src = np.float32( [[540,495],
@@ -296,15 +366,18 @@ def draw_lanelines(image):
     Minv = cv2.getPerspectiveTransform(dst, src)
 
     # Warp the image using OpenCV warpPerspective()
-    warped = cv2.warpPerspective(one, M, (image.shape[1],image.shape[0]), flags = cv2.INTER_LINEAR)
+    warped = cv2.warpPerspective(combined, M, (image.shape[1],image.shape[0]), flags = cv2.INTER_LINEAR)
+
+    ##################################################################
 
     if debug == True:
         mpimg.imsave( 'writeup_binary_warped.jpg',warped)
         test_perspected = cv2.warpPerspective(image, M, (image.shape[1],image.shape[0]), flags = cv2.INTER_LINEAR)
         mpimg.imsave( 'writeup_perspected_transform.jpg',test_perspected)
+        mpimg.imsave( 'writeup_perspected_transform.jpg',test_perspected)
 
     ###########################################################
-    #windowing if needed
+    # windowing if needed
     ###########################################################
     if need_windowing == True:
         # Assuming you have created a warped binary image called "warped"
@@ -321,6 +394,13 @@ def draw_lanelines(image):
         #I found out nothing was been drawing sometimes because of a white car!
         leftx_base = np.argmax(histogram[:(midpoint-200)])
         rightx_base = np.argmax(histogram[(midpoint+200):]) + midpoint
+
+
+        #meter per pixel
+        M_PER_PIXEL = 100
+
+        #how much is this car off from the middle point?
+        middle_point_off = (midpoint - ((leftx_base + rightx_base )/2 ) ) * M_PER_PIXEL
         
         # Choose the number of sliding windows
         nwindows = 9
@@ -399,15 +479,24 @@ def draw_lanelines(image):
         ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
 
 
+        #it's based on pixcel
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
-        if check_curvature(left_fit[0],left_fit[1],left_fit[2],300) == True:
+
+        #in meters of real world 
+        #left_fit = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
+        #right_fit = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
+
+
+        isok , left_curvature = check_curvature(left_fit[0],left_fit[1],left_fit[2],300)
+        if isok == True:
             left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
         else:
             need_windowing = True
             use_old_one = True
         
-        if check_curvature(right_fit[0],right_fit[1],right_fit[2],600) == True:
+        isok , right_curvature = check_curvature(right_fit[0],right_fit[1],right_fit[2],300)
+        if isok == True:
             right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
         else:
             need_windowing = True
@@ -431,9 +520,22 @@ def draw_lanelines(image):
         cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
 
         #cv2.circle(color_warp,(600,400), 30, (255,0,0), -1) #just for debug
+
+
         
         # Warp the blank back to original image space using inverse perspective matrix (Minv)
         newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
+
+    ##############################################################
+    #put some text on the frame/image
+    ##############################################################
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text = "L:" + str(left_curvature*xm_per_pix) + " / R:" + str(right_curvature*xm_per_pix)
+    cv2.putText(image,text ,(100,100), font, 1,(255,255,255),2,cv2.LINE_AA)
+
+    text = "from center:" + str(middle_point_off*xm_per_pix)
+    cv2.putText(image,text ,(100,200), font, 1,(255,255,255),2,cv2.LINE_AA)
+
 
     #if it's not valid, just  use preview newwarp!!
     # Combine the result with the original image
