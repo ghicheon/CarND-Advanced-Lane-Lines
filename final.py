@@ -277,9 +277,8 @@ def draw_lanelines(image):
     one = np.zeros_like(S, dtype=np.uint8)
 
 
-    #one[((S > low) & (S <= high)) &  (combined == 1)] = 255
-    one[(S > low) & (S <= high) & (combined == 1)] = 255
-    #one[(S > low) & (S <= high)] = 255
+    #one[(S > low) & (S <= high) & (combined == 1)] = 255
+    one[(S > low) & (S <= high)] = 255
 
     #I got these values directly by an image viewer.
     src = np.float32( [[540,495],
