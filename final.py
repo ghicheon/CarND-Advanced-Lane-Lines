@@ -39,8 +39,8 @@ newwarp = None
 
 
 #avoid doing carmera callibration and getting distortion parameter values again.
-PICKLE_READY = False
-#PICKLE_READY = True
+#PICKLE_READY = False
+PICKLE_READY = True
 
 #just for debug & writeup report.
 debug=True
@@ -137,7 +137,7 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
     return out
 
-def process_combined_threshold(image):
+def process_combined_threshold(img):
     kernel_size = 3 #kernel size
 
     # 1) Convert to grayscale
@@ -275,10 +275,13 @@ def draw_lanelines(image):
     zero = np.zeros_like(S, dtype=np.uint8)
 
     one = np.zeros_like(S, dtype=np.uint8)
-    #one[((S > low) & (S <= high)) &  (combined == 1)] = 255
-    one[(S > low) & (S <= high)] = 255
 
-    #I got these values directly by the image viewer.
+
+    #one[((S > low) & (S <= high)) &  (combined == 1)] = 255
+    one[(S > low) & (S <= high) & (combined == 1)] = 255
+    #one[(S > low) & (S <= high)] = 255
+
+    #I got these values directly by an image viewer.
     src = np.float32( [[540,495],
                       [750,495],
                       [376,603],
