@@ -56,8 +56,11 @@ debug=True
 
 #it was assumed that the lane is about 30 meters long and 3.7 meters wide
 
-ym_per_pix = 30/720
-xm_per_pix = 3.7/700
+#ym_per_pix = 30/720
+#M_PER_PIXEL = 3.7/700
+
+#only need to consider x axis
+M_PER_PIXEL = 3.7/700
 
 
 def region_of_interest(img, vertices):
@@ -395,12 +398,9 @@ def draw_lanelines(image):
         leftx_base = np.argmax(histogram[:(midpoint-200)])
         rightx_base = np.argmax(histogram[(midpoint+200):]) + midpoint
 
-
-        #meter per pixel
-        M_PER_PIXEL = 100
-
         #how much is this car off from the middle point?
-        middle_point_off = (midpoint - ((leftx_base + rightx_base )/2 ) ) * M_PER_PIXEL
+        middle_point_off = (midpoint - ((leftx_base + rightx_base)/2)) * M_PER_PIXEL
+        print("XXXXXXXX ", midpoint , ((leftx_base + rightx_base)/2), leftx_base,rightx_base,M_PER_PIXEL)
         
         # Choose the number of sliding windows
         nwindows = 9
@@ -484,8 +484,8 @@ def draw_lanelines(image):
         right_fit = np.polyfit(righty, rightx, 2)
 
         #in meters of real world 
-        #left_fit = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
-        #right_fit = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
+        #left_fit = np.polyfit(lefty*ym_per_pix, leftx*M_PER_PIXEL, 2)
+        #right_fit = np.polyfit(righty*ym_per_pix, rightx*M_PER_PIXEL, 2)
 
 
         isok , left_curvature = check_curvature(left_fit[0],left_fit[1],left_fit[2],300)
@@ -530,10 +530,14 @@ def draw_lanelines(image):
     #put some text on the frame/image
     ##############################################################
     font = cv2.FONT_HERSHEY_SIMPLEX
-    text = "L:" + str(left_curvature*xm_per_pix) + " / R:" + str(right_curvature*xm_per_pix)
+    text = "Left  curvature:" + str(left_curvature*M_PER_PIXEL) 
     cv2.putText(image,text ,(100,100), font, 1,(255,255,255),2,cv2.LINE_AA)
 
-    text = "from center:" + str(middle_point_off*xm_per_pix)
+    text = "Right curvature:" + str(right_curvature*M_PER_PIXEL)
+    cv2.putText(image,text ,(100,150), font, 1,(255,255,255),2,cv2.LINE_AA)
+
+
+    text="from center(m):" + str(abs(middle_point_off)) + " Left" if middle_point_off > 0 else " Right"
     cv2.putText(image,text ,(100,200), font, 1,(255,255,255),2,cv2.LINE_AA)
 
 
