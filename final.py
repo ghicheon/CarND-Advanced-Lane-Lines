@@ -27,8 +27,8 @@ PICKLE_READY = False
 #PICKLE_READY = True
 
 #just for debug & writeup report.
-debug=False
-#debug=True
+#debug=False
+debug=True
 
 
 #It took some time to do Sliding window search.It will be better to avoid it as much as possible.
@@ -270,7 +270,7 @@ def draw_lanelines(image):
     vertices = get_vertices(image.shape)
     out = region_of_interest( image , vertices)
 
-    #(just for debug ) draw the polygon.
+    #draw the polygon.
     #dd = [ list(c)  for c  in vertices[0]]
     #for i in range(0,len(dd)-1):
     #    cv2.line(image, tuple(dd[i]), tuple(dd[i+1]), color=(0,0,255), thickness=5)
@@ -371,8 +371,8 @@ def draw_lanelines(image):
     if debug == True:
         mpimg.imsave( 'writeup_binary_warped.jpg',warped)
         test_perspected = cv2.warpPerspective(image, M, (image.shape[1],image.shape[0]), flags = cv2.INTER_LINEAR)
-        mpimg.imsave( 'writeup_perspected_transform.jpg',test_perspected)
-        mpimg.imsave( 'writeup_perspected_transform.jpg',test_perspected)
+        mpimg.imsave( 'writeup_perspected_transform_before.jpg',image)
+        mpimg.imsave( 'writeup_perspected_transform_after.jpg',test_perspected)
 
     ###########################################################
     # windowing if needed
@@ -524,13 +524,13 @@ def draw_lanelines(image):
     #put some text on the frame/image
     ##############################################################
     font = cv2.FONT_HERSHEY_SIMPLEX
-    text = "Left  curvature:%.3f" % (left_curvature*M_PER_PIXEL) 
+    text = ("Left  curvature:%.3f" % (left_curvature*M_PER_PIXEL) ) + "m"
     cv2.putText(image,text ,(100,100), font, 1,(255,255,255),2,cv2.LINE_AA)
 
-    text = "Right curvature:%.3f" % (right_curvature*M_PER_PIXEL)
+    text = ("Right curvature:%.3f" % (right_curvature*M_PER_PIXEL) )+ "m"
     cv2.putText(image,text ,(100,150), font, 1,(255,255,255),2,cv2.LINE_AA)
 
-    text=("from center(m):%.3f" % abs(middle_point_off)) + "m Left" if middle_point_off > 0 else " Right"
+    text=("from center :%.3f" % abs(middle_point_off)) + "m Left" if middle_point_off > 0 else " Right"
     cv2.putText(image,text ,(100,200), font, 1,(255,255,255),2,cv2.LINE_AA)
 
 
@@ -588,7 +588,8 @@ if PICKLE_READY == False:
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
     
     dst = cv2.undistort(img, mtx, dist, None, mtx)
-    cv2.imwrite('calibration1_undist.jpg',dst)
+    cv2.imwrite('writeup_calibration1_undist_before.jpg',img)
+    cv2.imwrite('writeup_calibration1_undist_after.jpg',dst)
     
     #save the result as a pickle in order to save time.
     dist_pickle = {}
@@ -596,14 +597,6 @@ if PICKLE_READY == False:
     dist_pickle["dist"] = dist
     pickle.dump( dist_pickle, open( "dist_pickle.p", "wb" ) )
     
-    # this code is just for writeup report!
-    if debug == True:
-        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
-        ax1.imshow(img)
-        ax1.set_title('Original Image', fontsize=30)
-        ax2.imshow(dst)
-        ax2.set_title('Undistorted Image', fontsize=30)
-        plt.show()   
 else:
     #reload the pickle image
     dist_pickle = {}
