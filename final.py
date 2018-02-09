@@ -615,7 +615,7 @@ for f in os.listdir("test_images/"):
     image = mpimg.imread('test_images/' + f )
     need_windowing=True
     out  = draw_lanelines(image)
-    mpimg.imsave( 'output_images/' + f ,out)
+    mpimg.imsave( 'test_images_output/' + f ,out)
 
     #skip some debug code from now on. 
     debug=False 
