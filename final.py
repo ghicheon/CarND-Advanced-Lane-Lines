@@ -73,57 +73,6 @@ def region_of_interest(img, vertices):
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
 
-###############################################################################
-##  threshhold                                                              #
-###############################################################################
-def process_combined_threshold(img):
-    kernel_size = 3 #kernel size
-
-    # 1) Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-    # 2) Take the derivative in x & y 
-    xSobel = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=kernel_size)
-    ySobel = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=kernel_size)
-
-    # 3) Take the absolute value of the derivative or gradient
-    xAbs = np.absolute(xSobel)
-    yAbs = np.absolute(ySobel)
-
-    # 4) Scale to 8-bit (0 - 255) then convert to type = np.uint8
-    xScale = np.uint8(255*xAbs/np.max(xAbs))
-    yScale = np.uint8(255*yAbs/np.max(yAbs))
-
-    # 5) Create a mask of 1's 
-    thresh=(20, 100)
-
-    xGrad = np.zeros_like(xScale)
-    xGrad[(xScale >= thresh[0]) & (xScale <= thresh[1])] = 1
-
-    yGrad = np.zeros_like(yScale)
-    yGrad[(yScale >= thresh[0]) & (yScale <= thresh[1])] = 1
-    #############################################################
-    # 6) Calculate the magnitude(binary)
-    thresh=(30,100)
-    mag = np.sqrt( xGrad**2 + yGrad **2)
-    mag = np.absolute(mag)
-    mag = np.uint8(255*mag/np.max(mag))
-
-    mag_bin = np.zeros_like(mag)
-    mag_bin[(mag >= thresh[0]) & (mag <= thresh[1] )] = 1
-    #############################################################
-    # 7) calculate the direction of the gradient
-    thresh=(0.7,1.3) 
-    dir_ = np.arctan2(ySobel,xSobel) 
-    dir_bin = np.zeros_like(dir_)
-    dir_bin [(dir_ >=  thresh[0]) & (dir_ <=  thresh[1] )] = 1
-
-    # 8) try to get the best result by combining 4 elements of upper code.
-    combined = np.zeros_like(dir_bin,dtype=np.uint8)
-    combined[((xGrad == 1) & (yGrad == 1)) | ((mag_bin == 1) & (dir_bin == 1))] = 1
-
-    return combined
-
 #this function is for getting vertices. 
 def get_vertices(shape):
     xmax = shape[1]
@@ -467,10 +416,11 @@ def draw_lanelines(image):
 
     return cv2.addWeighted(image, 1, newwarp, 0.3, 0) #alpha=1 ,beta=0.3 ,gamma=0
 
+###########################################################################
+#main code
+###########################################################################
 
-###############################################################################
-## WRITEUP camera calibration                                                 #
-###############################################################################
+# WRITEUP camera calibration  #########################################
 if PICKLE_READY == False:
     # make object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
     objp = np.zeros((6*9,3), np.float32)
@@ -506,9 +456,7 @@ if PICKLE_READY == False:
     print("1. camera calibration - done")
     
 
-##############################################
-# undistortion test
-##############################################
+# undistortion test ########################################
     img = mpimg.imread('camera_cal/calibration1.jpg')
     img_size = (img.shape[1], img.shape[0])
     
@@ -518,13 +466,20 @@ if PICKLE_READY == False:
     dst = cv2.undistort(img, mtx, dist, None, mtx)
     cv2.imwrite('writeup_calibration1_undist_before.jpg',img)
     cv2.imwrite('writeup_calibration1_undist_after.jpg',dst)
+
+
+# undistortion test  with test image #########################
+    img = mpimg.imread('test_images/test1.jpg')
+    img_size = (img.shape[1], img.shape[0])
+    
+    dst = cv2.undistort(img, mtx, dist, None, mtx)
+    cv2.imwrite('writeup_undistorted_test_image.jpg',dst)
     
     #save the result as a pickle in order to save time.
     dist_pickle = {}
     dist_pickle["mtx"] = mtx
     dist_pickle["dist"] = dist
     pickle.dump( dist_pickle, open( "dist_pickle.p", "wb" ) )
-    
 else:
     #reload the pickle image
     dist_pickle = {}
@@ -534,9 +489,7 @@ else:
 
 print("2. undistortion test - done")
 
-###############################################################################
-## WRITEUP Pipeline(Single Images)
-###############################################################################
+## WRITEUP Pipeline(Single Images)  ##########################
 for f in os.listdir("test_images/"):
     global need_windows
 
@@ -549,9 +502,7 @@ for f in os.listdir("test_images/"):
     debug=False 
 print("3. single images pipeline - done")
     
-###############################################################################
-## WRITEUP Pileline(Video)
-###############################################################################
+## WRITEUP Pileline(Video) ###################################
 
 need_windowing=True
 clip = VideoFileClip("project_video.mp4")

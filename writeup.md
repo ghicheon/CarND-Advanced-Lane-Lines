@@ -40,7 +40,7 @@ You're reading it!
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-It can be found in 474 lines to 532 lines of final.py   
+It can be found in 424 lines to 488 lines of final.py   
 First of all, I need to have object points and image points about all calibration files. It can be done by cv2.findChessBoardCorners().    
 After That,  cv2.callibrateCamera() is called with objpoints and imgpoints.  The function returns 5 values.But all we need to use is mtx and dist.    
 Finally, cv2.undistort() is called with mtx ,dist. The function returns an undistorted image.    
@@ -60,7 +60,7 @@ I'll show one of undistorted test images.
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I tried to get the best result using a combination of color and gradient thresholds.  The code can be found from 175 to 265 lines of final.py     
+I tried to get the best result using a combination of color and gradient thresholds.  The code can be found from 124 to 215 lines of final.py     
 
 One of example is below. Actually,I eliminate other scene before processing. that's the reason why the image only has lane lines.    
 
@@ -129,6 +129,21 @@ Here's a [link to my video result](./project_video_output.mp4)
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+
+I encountered many problems while running this project.    
+I spent so much time making stable lane lines. I could get a much better result using the radius of curvature. I calculated this value in pixels. I found the resonable range of the value(2000 < x < 30000) by trial and error.   
+Next, It was difficult to find lane lines in bright sunlight. I tried to find it using x gradient,y gradient, S channel and so on. Howevery,Sometimes I coundn't find it at all. At that time, I threw out the frame and used previous one.   
+
+In the end, I realized I can make a good result in project video only with S channel!! But, I want to believe that using all tools(x gradient,y gradient, direction of gradient and so on...) will make a better result in other vidoes.   
+
+To be honest, the most difficult thing in this project was to understand what's going on because I didn't know about Computer Vision before. I learned a lot about Computer Vision thanks to this project!
+
+I think we can take advantage of parallelization of lane lines.
+when we found one(left or right) good lane line.I think we can draw the other easily because lane lines are parallel.
+
+In the end, it was a very good experience!
+
+
 
 
 
