@@ -16,7 +16,7 @@ The goals / steps of this project are the following:
 [image1]: ./writeup_calibration1_undist_before.jpg "original"
 [image1_1]: ./writeup_calibration1_undist_after.jpg "Undistorted"
 
-[image2]: ./writeup_undisorted_test_image.jpg   "undistorted test image"
+[image2]: ./writeup_undistorted_test_image.jpg   "undistorted test image"
 [image3]: ./writeup_combined_binary.jpg         "Binary Example"
 [image4]: ./writeup_perspected_transform_before.jpg "perspective transform before"
 [image4_1]: ./writeup_perspected_transform_after.jpg "perspective transform after"
