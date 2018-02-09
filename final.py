@@ -4,7 +4,7 @@
 # Project 4: Advanced lane lines
 # by Ghicheon Lee 
 #
-# date: 2018.2.7
+# date: 2018.2.9
 #######################################################################
 
 #I referenced a lot of codes and hints from Advanced Lane Finding" Lecture of CarND!
@@ -21,6 +21,14 @@ from IPython.display import HTML
 import math
 import os 
 #import sys
+
+#avoid doing carmera callibration and getting distortion parameter values again.
+PICKLE_READY = False
+#PICKLE_READY = True
+
+#just for debug & writeup report.
+debug=False
+#debug=True
 
 
 #It took some time to do Sliding window search.It will be better to avoid it as much as possible.
@@ -45,21 +53,7 @@ middle_point_off = 0.0
 newwarp = None
 
 
-
-#avoid doing carmera callibration and getting distortion parameter values again.
-#PICKLE_READY = False
-PICKLE_READY = True
-
-#just for debug & writeup report.
-debug=True
-
-
-#it was assumed that the lane is about 30 meters long and 3.7 meters wide
-
-#ym_per_pix = 30/720
-#M_PER_PIXEL = 3.7/700
-
-#only need to consider x axis
+#it was assumed that the lane is 3.7 meters wide
 M_PER_PIXEL = 3.7/700
 
 
@@ -232,12 +226,13 @@ def get_vertices(shape):
 
 
 
-#calculate the radius of curvature. return true if it's good 
+#calculate the radius of curvature using pixel.
+#when this value is shown on the frame, the value is translated into meter.
 def check_curvature(a,b,c,X):
         yp = a*2 *X + b
         ypp = a*2
         radius_of_curvature = ((1 + yp**2)**3/2)/abs(ypp)
-        print(radius_of_curvature)
+        #print(radius_of_curvature)
 
         #check if the radius is from 2000 to 30000.
         #if the value is out of this range, it's not valid. 
@@ -400,7 +395,6 @@ def draw_lanelines(image):
 
         #how much is this car off from the middle point?
         middle_point_off = (midpoint - ((leftx_base + rightx_base)/2)) * M_PER_PIXEL
-        print("XXXXXXXX ", midpoint , ((leftx_base + rightx_base)/2), leftx_base,rightx_base,M_PER_PIXEL)
         
         # Choose the number of sliding windows
         nwindows = 9
@@ -530,14 +524,13 @@ def draw_lanelines(image):
     #put some text on the frame/image
     ##############################################################
     font = cv2.FONT_HERSHEY_SIMPLEX
-    text = "Left  curvature:" + str(left_curvature*M_PER_PIXEL) 
+    text = "Left  curvature:%.3f" % (left_curvature*M_PER_PIXEL) 
     cv2.putText(image,text ,(100,100), font, 1,(255,255,255),2,cv2.LINE_AA)
 
-    text = "Right curvature:" + str(right_curvature*M_PER_PIXEL)
+    text = "Right curvature:%.3f" % (right_curvature*M_PER_PIXEL)
     cv2.putText(image,text ,(100,150), font, 1,(255,255,255),2,cv2.LINE_AA)
 
-
-    text="from center(m):" + str(abs(middle_point_off)) + " Left" if middle_point_off > 0 else " Right"
+    text=("from center(m):%.3f" % abs(middle_point_off)) + "m Left" if middle_point_off > 0 else " Right"
     cv2.putText(image,text ,(100,200), font, 1,(255,255,255),2,cv2.LINE_AA)
 
 
@@ -574,14 +567,14 @@ if PICKLE_READY == False:
             objpoints.append(objp)
             imgpoints.append(corners)
     
-            # Draw and display the corners
-            cv2.drawChessboardCorners(img, (9,6), corners, ret)
-            write_name = 'corners_found'+str(idx)+'.jpg'
-            cv2.imwrite(write_name, img)
-            cv2.imshow('img', img)
-            cv2.waitKey(500)
+            #Draw and display the corners
+            #cv2.drawChessboardCorners(img, (9,6), corners, ret)
+            #write_name = 'corners_found'+str(idx)+'.jpg'
+            #cv2.imwrite(write_name, img)
+            #cv2.imshow('img', img)
+            #cv2.waitKey(500)
     
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
     print("1. camera calibration - done")
     
 
@@ -604,12 +597,13 @@ if PICKLE_READY == False:
     pickle.dump( dist_pickle, open( "dist_pickle.p", "wb" ) )
     
     # this code is just for writeup report!
-    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
-    ax1.imshow(img)
-    ax1.set_title('Original Image', fontsize=30)
-    ax2.imshow(dst)
-    ax2.set_title('Undistorted Image', fontsize=30)
-    plt.show()   
+    if debug == True:
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+        ax1.imshow(img)
+        ax1.set_title('Original Image', fontsize=30)
+        ax2.imshow(dst)
+        ax2.set_title('Undistorted Image', fontsize=30)
+        plt.show()   
 else:
     #reload the pickle image
     dist_pickle = {}
@@ -632,6 +626,7 @@ for f in os.listdir("test_images/"):
 
     #skip some debug code from now on. 
     debug=False 
+print("3. single images pipeline - done")
     
 ###############################################################################
 ## WRITEUP Pileline(Video)
@@ -641,6 +636,7 @@ need_windowing=True
 clip = VideoFileClip("project_video.mp4")
 result = clip.fl_image(draw_lanelines) 
 result.write_videofile('project_video_output.mp4', audio=False)
+print("4. video pipeline - done")
 
 
 #need_windowing=True
